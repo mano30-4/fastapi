@@ -67,22 +67,31 @@ def get_post(id : int,db: Session = Depends(get_db)): ## bc of fastapi it automa
     return {"detail":post}
 
 @app.delete("/posts/{id}")
-def delete_post(id :int):
+def delete_post(id :int,db: Session = Depends(get_db)):
     # cursor.execute("""DELETE FROM posts where posts.id = %s RETURNING *""",(str(id)))
     # deleted_post = cursor.fetchone()
     # conn.commit()
-
-
-    if not deleted_post :
+    post = db.query(models.Post).filter(models.Post.id == id).first()
+    if not post :
         raise HTTPException(status_code= 404 , detail = "post not found")
-    return deleted_post
+    db.delete(post)
+    db.commit()
+    return post
 
 
 @app.put("/posts/{id}")
-def update_post(id :int, post : Post):
-    cursor.execute("""UPDATE posts SET title =%s, content = %s, published = %s WHERE id = %s RETURNING *""",(post.title,post.content,post.published,str(id)))
-    updated_post=cursor.fetchone()
-    conn.commit()
-    if not updated_post:
+def update_post(id :int, post : Post,db: Session = Depends(get_db)):
+    # cursor.execute("""UPDATE posts SET title =%s, content = %s, published = %s WHERE id = %s RETURNING *""",(post.title,post.content,post.published,str(id)))
+    # updated_post=cursor.fetchone()
+    # conn.commit()
+
+    post_query=db.query(models.Post).filter(models.Post.id==id)
+    existing_post=post_query.first()
+    if not existing_post:
         raise HTTPException(status_code= 404 , detail = "post not found")
-    return updated_post
+
+    post_query.update(post.model_dump(), synchronize_session=False)
+
+    db.commit()
+
+    return post_query.first()
